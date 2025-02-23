@@ -1,6 +1,9 @@
 package br.com.felipenasci.events.controller;
 
 import java.util.List;
+
+import br.com.felipenasci.events.exceptions.SubscriptionConflictException;
+import br.com.felipenasci.events.exceptions.UserIndicatorNotFound;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,6 +11,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import br.com.felipenasci.events.dto.ErrorMessage;
+import br.com.felipenasci.events.exceptions.EventNotFoundException;
 import br.com.felipenasci.events.model.Subscription;
 import br.com.felipenasci.events.model.User;
 import br.com.felipenasci.events.service.EventService;
@@ -27,16 +33,25 @@ public class SubscriptionController {
     return subscriptionService.getAllSubscriptions();
   }
 
-  @PostMapping("/subscriptions/{prettyName}")
-  public ResponseEntity<Subscription> createNewSubscription(@PathVariable String prettyName,
-      @RequestBody User subscriber) {
-    Subscription subscription = subscriptionService.createNewSubscription(prettyName, subscriber);
+  @PostMapping({"/subscriptions/{prettyName}", "/subscriptions/{prettyName}/{userId}"})
+  public ResponseEntity<?> createNewSubscription(@PathVariable String prettyName,
+      @RequestBody User subscriber, @PathVariable(required = false) Integer userId) {
+    try {
 
-    if (subscription == null) {
-      return ResponseEntity.notFound().build();
+      var subscription = subscriptionService.createNewSubscription(prettyName, subscriber, userId);
+
+      if (subscription == null) {
+        return ResponseEntity.notFound().build();
+      }
+
+      return ResponseEntity.status(201).body(subscription);
+    } catch (EventNotFoundException | UserIndicatorNotFound exception) {
+      return ResponseEntity.status(404).body(new ErrorMessage(exception.getMessage()));
+    } catch (SubscriptionConflictException exception) {
+      return ResponseEntity.status(409).body(new ErrorMessage(exception.getMessage()));
+
     }
 
-    return ResponseEntity.ok(subscription);
   }
 
 }
