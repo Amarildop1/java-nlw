@@ -69,8 +69,9 @@ public class SubscriptionService {
 
     Subscription newSubscription = subscriptionRepository.save(subscription);
 
-    String url = "http://codecraft.com/" + newSubscription.getEvent().getPrettyName() + '/'+ newSubscription.getSubscriber().getId();
-    return new SubscriptionResponse(newSubscription.getId(), url);
+    Integer subscriberId = newSubscription.getSubscriber().getId();
+    String url = "localhost:8080/" + newSubscription.getEvent().getPrettyName() + '/'+ subscriberId;
+    return new SubscriptionResponse(newSubscription.getId(), url, subscriberId);
   }
 
   public List<SubscriptionRankingItem> getCompleteRanking(String prettyName){
@@ -79,7 +80,10 @@ public class SubscriptionService {
       throw new EventNotFoundException(prettyName);
     }
 
-    return subscriptionRepository.generateRanking(event.getEventId());
+    var ranking = subscriptionRepository.generateRanking(event.getEventId());
+    var length = ranking.size();
+
+    return length >= 3? ranking.subList(0,3): ranking.subList(0, length);
   }
 
   public SubscriptionRankingByUser getRankingByUser(String prettyName, Integer userId){
@@ -90,7 +94,6 @@ public class SubscriptionService {
       throw new UserIndicatorNotFound(userId.toString());
     }
 
-    System.out.println(item);
     var position = IntStream.range(0, rankings.size()).filter(index -> rankings.get(index).userId().equals(userId)).findFirst().getAsInt();
 
     return new SubscriptionRankingByUser(item, position + 1);

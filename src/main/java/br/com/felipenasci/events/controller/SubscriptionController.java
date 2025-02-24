@@ -57,7 +57,7 @@ public class SubscriptionController {
   @GetMapping("/subscriptions/{prettyName}/ranking")
   public ResponseEntity<?> getSubscriptionRankingByEvent(@PathVariable String prettyName){
       try {
-        return ResponseEntity.ok(subscriptionService.getCompleteRanking(prettyName).subList(0,3));
+        return ResponseEntity.ok(subscriptionService.getCompleteRanking(prettyName));
       } catch (EventNotFoundException exception){
         return ResponseEntity.status(404).body(new ErrorMessage(exception.getMessage()));
       }
