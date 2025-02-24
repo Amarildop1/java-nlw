@@ -1,5 +1,7 @@
 package br.com.felipenasci.events.service;
 
+import br.com.felipenasci.events.dto.SubscriptionRankingItem;
+import br.com.felipenasci.events.dto.SubscriptionRankingByUser;
 import br.com.felipenasci.events.dto.SubscriptionResponse;
 import br.com.felipenasci.events.exceptions.SubscriptionConflictException;
 import br.com.felipenasci.events.exceptions.UserIndicatorNotFound;
@@ -11,6 +13,8 @@ import br.com.felipenasci.events.repository.EventRepository;
 import br.com.felipenasci.events.repository.SubscriptionRepository;
 import br.com.felipenasci.events.repository.UserRepository;
 import java.util.List;
+import java.util.stream.IntStream;
+
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
@@ -43,9 +47,14 @@ public class SubscriptionService {
       storedUser = userRepository.save(user);
     }
 
-    User indicator = userRepository.findById(userIndicatorId).orElse(null);
-    if (indicator == null){
-      throw new UserIndicatorNotFound(userIndicatorId.toString());
+    User indicator = null;
+
+    if(userIndicatorId != null){
+      indicator = userRepository.findById(userIndicatorId).orElse(null);
+
+      if (indicator == null){
+        throw new UserIndicatorNotFound(userIndicatorId.toString());
+      }
     }
 
     Subscription tempSubscription = subscriptionRepository.findByEventAndSubscriber(event, storedUser);
@@ -64,4 +73,26 @@ public class SubscriptionService {
     return new SubscriptionResponse(newSubscription.getId(), url);
   }
 
+  public List<SubscriptionRankingItem> getCompleteRanking(String prettyName){
+    Event event = eventRepository.findByPrettyName(prettyName);
+    if (event == null) {
+      throw new EventNotFoundException(prettyName);
+    }
+
+    return subscriptionRepository.generateRanking(event.getEventId());
+  }
+
+  public SubscriptionRankingByUser getRankingByUser(String prettyName, Integer userId){
+    List<SubscriptionRankingItem> rankings = getCompleteRanking(prettyName);
+    SubscriptionRankingItem item = rankings.stream().filter(ranking -> ranking.userId().equals(userId)).findFirst().orElse(null);
+
+    if (item == null){
+      throw new UserIndicatorNotFound(userId.toString());
+    }
+
+    System.out.println(item);
+    var position = IntStream.range(0, rankings.size()).filter(index -> rankings.get(index).userId().equals(userId)).findFirst().getAsInt();
+
+    return new SubscriptionRankingByUser(item, position + 1);
+  }
 }
